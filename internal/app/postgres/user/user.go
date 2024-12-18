@@ -1,8 +1,7 @@
 package userDb
 
 import (
-	"database/sql"
-	"os"
+	db "test/api/internal/app/postgres"
 
 	_ "github.com/lib/pq"
 )
@@ -15,16 +14,8 @@ type User struct {
 	UpdatedAt string `json:"updated_at"`
 }
 
-func Connect() (*sql.DB, error) {
-	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
-	if err != nil {
-		return nil, err
-	}
-	return db, nil
-}
-
 func GetUser(id int) (User, error) {
-	db, err := Connect()
+	db, err := db.GetDB()
 	if err != nil {
 		return User{}, err
 	}
@@ -41,13 +32,13 @@ func GetUser(id int) (User, error) {
 }
 
 func CreateUser(user User) (User, error) {
-	db, err := Connect()
+	db, err := db.GetDB()
 	if err != nil {
 		return User{}, err
 	}
 	defer db.Close()
 
-	row := db.QueryRow("INSERT INTO users (username, email) VALUES ($1, $2) RETURNING id, created_at", user.Username, user.Email)
+	row := db.QueryRow("INSERT INTO users (username, email) VALUES ($1, $2) RETURNING id, created_at, username, email", user.Username, user.Email)
 
 	var createdUser User
 	err = row.Scan(&createdUser.ID, &createdUser.CreatedAt)
@@ -58,13 +49,13 @@ func CreateUser(user User) (User, error) {
 }
 
 func UpdateUser(user User) (User, error) {
-	db, err := Connect()
+	db, err := db.GetDB()
 	if err != nil {
 		return User{}, err
 	}
 	defer db.Close()
 
-	row := db.QueryRow("UPDATE users SET username = $1, email = $2 WHERE id = $3 RETURNING id, updated_at", user.Username, user.Email, user.ID)
+	row := db.QueryRow("UPDATE users SET username = $1, email = $2 WHERE id = $3 RETURNING id, updated_at, username, email", user.Username, user.Email, user.ID)
 
 	var updatedUser User
 	err = row.Scan(&updatedUser.ID, &updatedUser.UpdatedAt)
@@ -75,7 +66,7 @@ func UpdateUser(user User) (User, error) {
 }
 
 func DeleteUser(id int) error {
-	db, err := Connect()
+	db, err := db.GetDB()
 	if err != nil {
 		return err
 	}
